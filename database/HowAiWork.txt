@@ -1,0 +1,66 @@
+The AI (BwanaShamba) is used for SMS and web chat only — not USSD. It uses RAG (Retrieval-Augmented Generation): it searches the officer-managed Knowledge Base, injects the best matches into a Kiswahili prompt, calls OpenAI GPT-4o, then either replies to the farmer or escalates to a ward officer if confidence is low.
+
+Where farmers get advice
+Channel	Uses AI?	How advice is delivered
+SMS (two-way)  Yes
+SmsController → FarmerChatService → OpenAI
+Web chat (/farmer/chat)  Yes
+FarmerController::sendMessage() → same service
+USSD (menu 1: Ushauri)  No
+Reads knowledge_base directly by crop + growth stage
+USSD option 4 tells farmers to use SMS for AI/officer replies.
+
+Step-by-step inside FarmerChatService
+1. Message arrives
+
+SMS: Africa's Talking webhook → SmsController::inbound()
+Web: AJAX POST → FarmerController::sendMessage()
+Both call FarmerChatService::handleMessage($farmerId, $text, $channel).
+2. Guards before AI
+
+Farmer must be registered (SMS rejects unknown phones).
+Rate limit: max queries per day (RateLimitService).
+Message saved to ai_messages (direction = in).
+3. Fast paths (no OpenAI call)
+
+Officer questions (“afisa wangu”, “namba ya afisa”) → looks up ward officer from DB.
+Visit questions (“ziara”, “ratiba”) → reads visits / visit_requests.
+Non-farming topics → rejected unless the chat is a continuation of an earlier farming thread.
+4. RAG — retrieve knowledge first
+
+RagService does keyword search on knowledge_base (title, situation, solution):
+
+Top 3 published entries
+Filtered by farmer’s district (via ward)
+Scored by relevance (title match = 3, situation = 2, solution = 1)
+It also builds farmer context: assigned WAO name/phone, upcoming visits, current Tanzania season (Masika / Vuli / Kianga).
+
+5. OpenAI API call
+
+API key comes from .env → OPENAI_API_KEY → config.php.
+
+The system prompt tells the model:
+
+You are BwanaShamba, Kiswahili-only, simple language
+Use KB entries as ground truth; don’t invent facts
+If unsure, reply exactly ESCALATE: [reason]
+SMS replies must stay under ~155 characters
+Recent chat history (last ~10 messages on same channel) is sent so follow-up questions work.
+
+6. Confidence & escalation
+
+Confidence is marked low if the reply contains phrases like sijui, sina uhakika, or if the model says ESCALATE.
+
+On low confidence:
+
+Farmer gets: “Swali lako limewasilishwa kwa afisa wako…”
+Row inserted into escalations for the ward officer
+Officer replies from /officer/escalations
+That Q&A is saved back to KB via RagService::learnFromEscalation() so the AI can answer similar questions later
+7. Reply delivery
+
+Web: JSON { reply, escalated } shown in chat UI
+SMS: reply sent via Africa's Talking; delivery status updated via webhook
+
+Design in one sentence
+Officers write the truth (Knowledge Base); RAG finds relevant entries; GPT-4o turns them into simple Kiswahili advice; when the AI isn’t sure, a human officer answers and the system learns from that answer.

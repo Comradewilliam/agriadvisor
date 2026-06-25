@@ -1,0 +1,21 @@
+{
+  "name": "agriad",
+  "private": true,
+  "scripts": {
+    "build:css": "tailwindcss -i ./resources/css/app.css -o ./public/assets/css/app.css --minify",
+    "build:assets": "node scripts/copy-assets.js",
+    "build": "npm run build:css && npm run build:assets"
+  },
+  "devDependencies": {
+    "@tailwindcss/container-queries": "^0.1.1",
+    "@tailwindcss/forms": "^0.5.10",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^3.4.17"
+  },
+  "dependencies": {
+    "@fontsource/inter": "^5.2.5",
+    "@fontsource/material-symbols-outlined": "^5.2.5",
+    "chart.js": "^4.4.8"
+  }
+}

@@ -1,0 +1,33 @@
+# Environment & secrets
+.env
+
+# PHP dependencies
+/vendor/
+
+# Node (Tailwind build)
+/node_modules/
+
+# Runtime logs & cache
+/storage/logs/*.log
+/storage/weather_cache/*.json
+/storage/queue/*
+!/storage/logs/.gitkeep
+!/storage/queue/.gitkeep
+!/storage/weather_cache/.gitkeep
+
+# Local tools & archives
+ngrok.exe
+*.zip
+*.docx
+
+# OS & IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# PHPUnit
+.phpunit.result.cache
+/coverage/
