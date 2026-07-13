@@ -75,6 +75,7 @@ class Logger
                 $message,
                 $context
             );
+            self::mirrorToAnalytics($level, $message, $context);
             return;
         }
 
@@ -90,5 +91,17 @@ class Logger
             $line,
             FILE_APPEND | LOCK_EX
         );
+        self::mirrorToAnalytics($level, $message, $context);
+    }
+
+    private static function mirrorToAnalytics(string $level, string $message, array $context): void {
+        if (!class_exists(\App\Services\AppLogSyncService::class)) {
+            return;
+        }
+        try {
+            \App\Services\AppLogSyncService::persist($level, $message, $context);
+        } catch (\Throwable) {
+            // Never break logging if analytics insert fails.
+        }
     }
 }

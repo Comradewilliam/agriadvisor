@@ -45,9 +45,13 @@ class Farmer extends BaseModel {
     }
 
     public function findWithDetails(int $id): ?array {
+        $cropCols = $this->farmerCropColumnNames();
+        $plantedExpr = in_array('planted_at', $cropCols, true) ? "IFNULL(fc.planted_at,'')" : "''";
+        $stageExpr = in_array('growth_stage_id', $cropCols, true) ? "IFNULL(fc.growth_stage_id,'')" : "''";
+
         $stmt = $this->db->prepare(
             "SELECT f.*, CONCAT(f.first_name, ' ', f.last_name) AS name, w.name AS ward_name, v.name AS village_name,
-                    GROUP_CONCAT(CONCAT(c.id,'|',c.name_en,'|',fc.type,'|',IFNULL(fc.planted_at,''),'|',IFNULL(fc.growth_stage_id,'')) SEPARATOR ';;') AS crops_raw
+                    GROUP_CONCAT(CONCAT(c.id,'|',c.name_en,'|',fc.type,'|',{$plantedExpr},'|',{$stageExpr}) SEPARATOR ';;') AS crops_raw
              FROM farmers f
              LEFT JOIN wards w ON w.id = f.ward_id
              LEFT JOIN villages v ON v.id = f.village_id
@@ -73,6 +77,21 @@ class Farmer extends BaseModel {
             $row['crops'] = [];
         }
         return $row ?: null;
+    }
+
+    /** @return string[] */
+    private function farmerCropColumnNames(): array {
+        static $cols = null;
+        if ($cols !== null) {
+            return $cols;
+        }
+        try {
+            $rows = $this->db->query('SHOW COLUMNS FROM farmer_crops')->fetchAll();
+            $cols = array_column($rows, 'Field');
+        } catch (\Throwable) {
+            $cols = ['id', 'farmer_id', 'crop_id', 'type'];
+        }
+        return $cols;
     }
 
     /** All farmers visible to a ward officer */

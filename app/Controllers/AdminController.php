@@ -9,6 +9,7 @@ use App\Models\KnowledgeBase;
 use App\Helpers\Validator;
 use App\Helpers\Sanitizer;
 use App\Helpers\Logger;
+use App\Services\AppLogSyncService;
 
 class AdminController extends Controller {
 
@@ -349,6 +350,7 @@ class AdminController extends Controller {
         $tableReady = true;
         try {
             $db->query('SELECT 1 FROM system_events LIMIT 1');
+            AppLogSyncService::importAppLog();
         } catch (\Throwable $e) {
             $tableReady = false;
         }
@@ -361,9 +363,9 @@ class AdminController extends Controller {
             $where = ['se.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)'];
             $params = [$days];
             if ($search !== '') {
-                $where[] = '(se.phone LIKE ? OR se.message LIKE ? OR se.event LIKE ? OR f.name LIKE ?)';
+                $where[] = '(se.phone LIKE ? OR se.message LIKE ? OR se.event LIKE ? OR f.first_name LIKE ? OR f.last_name LIKE ?)';
                 $like = '%' . $search . '%';
-                $params = array_merge($params, [$like, $like, $like, $like]);
+                $params = array_merge($params, [$like, $like, $like, $like, $like]);
             }
             if ($category !== '') {
                 $where[] = 'se.category = ?';
@@ -379,7 +381,7 @@ class AdminController extends Controller {
             }
 
             $sql = "
-                SELECT se.*, f.name AS farmer_name
+                SELECT se.*, CONCAT(f.first_name, ' ', f.last_name) AS farmer_name
                 FROM system_events se
                 LEFT JOIN farmers f ON f.id = se.farmer_id
                 WHERE " . implode(' AND ', $where) . "
@@ -434,7 +436,8 @@ class AdminController extends Controller {
 
         try {
             $stmt = $db->prepare("
-                SELECT se.created_at, se.level, se.category, se.event, se.farmer_id, f.name AS farmer_name,
+                SELECT se.created_at, se.level, se.category, se.event, se.farmer_id,
+                       CONCAT(f.first_name, ' ', f.last_name) AS farmer_name,
                        se.phone, se.channel, se.message, se.meta
                 FROM system_events se
                 LEFT JOIN farmers f ON f.id = se.farmer_id

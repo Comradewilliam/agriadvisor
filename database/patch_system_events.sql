@@ -9,10 +9,12 @@ CREATE TABLE IF NOT EXISTS `system_events` (
     `channel` VARCHAR(20) NULL COMMENT 'ussd, sms, web',
     `message` VARCHAR(500) NULL,
     `meta` JSON NULL,
+    `source_hash` CHAR(64) NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX `idx_se_category` (`category`),
     INDEX `idx_se_event` (`event`),
     INDEX `idx_se_farmer` (`farmer_id`),
     INDEX `idx_se_level` (`level`),
-    INDEX `idx_se_created` (`created_at`)
+    INDEX `idx_se_created` (`created_at`),
+    UNIQUE INDEX `idx_se_source_hash` (`source_hash`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
